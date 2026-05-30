@@ -56,7 +56,7 @@ if not database.get_user(default_telegram_id):
         first_name=os.getenv('ORIGINAL_FIRST_NAME', 'Nino'),
         last_name=os.getenv('ORIGINAL_LAST_NAME', 'Keshelava'),
         default_bio=os.getenv('DEFAULT_BIO', "Your default telegram bio goes here."),
-        is_syncing=1,
+        is_syncing=1 if session_str else 0,
         tier="premium"
     )
     add_log("Seeded default user into sqlite DB.")
