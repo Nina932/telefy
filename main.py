@@ -26,8 +26,8 @@ API_HASH = os.getenv('TELEGRAM_API_HASH')
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-SPOTIFY_REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI', 'http://localhost:8888/callback')
 WEBAPP_URL = os.getenv('WEBAPP_URL') or os.getenv('PUBLIC_URL') or 'http://127.0.0.1:8080'
+SPOTIFY_REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI') or f"{WEBAPP_URL.rstrip('/')}/callback"
 APP_HOST = os.getenv('APP_HOST', '127.0.0.1')
 APP_PORT = int(os.getenv('APP_PORT') or os.getenv('PORT', '8080'))
 
