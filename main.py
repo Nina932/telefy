@@ -281,11 +281,11 @@ async def handle_client(reader, writer):
                     session = StringSession()
                     client = TelegramClient(session, API_ID, API_HASH)
                     await client.connect()
-                    phone_code_hash = await client.send_code_request(phone)
+                    sent_code = await client.send_code_request(phone)
                     telegram_login_clients[user_id] = {
                         "client": client,
                         "phone": phone,
-                        "phone_code_hash": phone_code_hash
+                        "phone_code_hash": sent_code.phone_code_hash
                     }
                     add_log(f"Verification code sent to {phone} for user {user_id}")
                     response_body = json.dumps({"success": True})
