@@ -1,0 +1,9 @@
+.env
+venv/
+__pycache__/
+*.pyc
+*.session
+*.session-journal
+.spotify_token_cache
+secret.key
+database.db

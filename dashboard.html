@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify ⇄ Telegram Sync Dashboard</title>
+    
+    <!-- Premium Typography and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --card-bg: rgba(22, 28, 38, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --spotify-green: #1db954;
+            --spotify-glow: rgba(29, 185, 84, 0.3);
+            --telegram-blue: #0088cc;
+            --telegram-glow: rgba(0, 136, 204, 0.3);
+            --text-primary: #ffffff;
+            --text-secondary: #8a99ad;
+            --premium-color: #ffb020;
+            --accent-glow: radial-gradient(circle at top right, rgba(0, 136, 204, 0.15), transparent 60%),
+                           radial-gradient(circle at bottom left, rgba(29, 185, 84, 0.1), transparent 60%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: var(--accent-glow);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            opacity: 0;
+            transform: translateY(15px);
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 10px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+        }
+
+        .logo-icon-wrapper i.fa-spotify {
+            font-size: 32px;
+            color: var(--spotify-green);
+            filter: drop-shadow(0 0 8px var(--spotify-green));
+            position: absolute;
+            left: 0;
+            z-index: 1;
+        }
+
+        .logo-icon-wrapper i.fa-paper-plane {
+            font-size: 20px;
+            color: var(--telegram-blue);
+            filter: drop-shadow(0 0 6px var(--telegram-blue));
+            position: absolute;
+            right: 0;
+            bottom: 4px;
+            z-index: 2;
+        }
+
+        .logo-text h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff 30%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+        }
+
+        .card-title i {
+            color: var(--telegram-blue);
+        }
+
+        .sync-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .sync-badge.active {
+            color: var(--spotify-green);
+            background: rgba(29, 185, 84, 0.1);
+            border-color: rgba(29, 185, 84, 0.2);
+            box-shadow: 0 0 10px rgba(29, 185, 84, 0.1);
+        }
+
+        .sync-badge.active .dot {
+            background-color: var(--spotify-green);
+            box-shadow: 0 0 8px var(--spotify-green);
+            animation: pulse-green 1.5s infinite;
+        }
+
+        .sync-badge.paused {
+            color: #ffb020;
+            background: rgba(255, 176, 32, 0.1);
+            border-color: rgba(255, 176, 32, 0.2);
+        }
+
+        .sync-badge.paused .dot {
+            background-color: #ffb020;
+            box-shadow: 0 0 8px #ffb020;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .now-playing-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 30px 24px;
+            background: radial-gradient(circle at top right, rgba(29, 185, 84, 0.08), transparent 70%), var(--card-bg);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .now-playing-card.playing {
+            cursor: pointer;
+        }
+
+        .now-playing-card.playing:hover {
+            border-color: rgba(29, 185, 84, 0.4);
+            box-shadow: 0 10px 40px rgba(29, 185, 84, 0.15);
+            background: radial-gradient(circle at top right, rgba(29, 185, 84, 0.12), transparent 70%), rgba(22, 28, 38, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .album-art-wrapper {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            margin-bottom: 24px;
+            border-radius: 16px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+            background-color: #12161f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        .album-art-wrapper:hover {
+            transform: scale(1.02);
+        }
+
+        .album-art {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .album-art.loaded {
+            opacity: 1;
+        }
+
+        .album-art-placeholder {
+            font-size: 48px;
+            color: rgba(255, 255, 255, 0.15);
+            position: absolute;
+            z-index: 1;
+        }
+
+        .track-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 10px;
+        }
+
+        .track-artist {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 24px;
+        }
+
+        .visualizer {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 4px;
+            height: 24px;
+            margin-bottom: 24px;
+        }
+
+        .visualizer-bar {
+            width: 3px;
+            background-color: var(--spotify-green);
+            border-radius: 3px;
+            height: 4px;
+            transition: height 0.3s ease;
+        }
+
+        .playing .visualizer-bar {
+            animation: bounce 1.2s ease-in-out infinite alternate;
+        }
+
+        .playing .visualizer-bar:nth-child(1) { animation-delay: 0.1s; }
+        .playing .visualizer-bar:nth-child(2) { animation-delay: 0.3s; }
+        .playing .visualizer-bar:nth-child(3) { animation-delay: 0.6s; }
+        .playing .visualizer-bar:nth-child(4) { animation-delay: 0.2s; }
+        .playing .visualizer-bar:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            10% { height: 4px; }
+            50% { height: 22px; }
+            90% { height: 8px; }
+        }
+
+        .progress-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--spotify-green), #5ee88c);
+            border-radius: 10px;
+            transition: width 0.5s linear;
+        }
+
+        .progress-time {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-label i {
+            color: var(--telegram-blue);
+        }
+
+        .form-input {
+            background-color: rgba(12, 17, 24, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--telegram-blue);
+            box-shadow: 0 0 10px rgba(0, 136, 204, 0.15);
+            background-color: rgba(12, 17, 24, 0.8);
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 20px;
+        }
+
+        .control-label-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .control-label {
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .control-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .4s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 34px;
+            border: 1px solid var(--card-border);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        input:checked + .slider {
+            background-color: var(--spotify-green);
+            box-shadow: 0 0 10px var(--spotify-glow);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--telegram-blue) 0%, #006699 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 20px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.2);
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 136, 204, 0.3);
+            background: linear-gradient(135deg, #0099e6 0%, var(--telegram-blue) 100%);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: var(--card-border);
+            box-shadow: none;
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        /* Premium Badge & Purchase Card Styling */
+        .premium-card {
+            background: linear-gradient(135deg, rgba(255, 176, 32, 0.15) 0%, rgba(22, 28, 38, 0.6) 100%);
+            border: 1px solid rgba(255, 176, 32, 0.3);
+            margin-bottom: 24px;
+            display: none; /* Shown dynamically if user is free tier */
+        }
+
+        .premium-card-title {
+            color: var(--premium-color);
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .star-price {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 800;
+            color: var(--premium-color);
+        }
+
+        .tier-badge {
+            background-color: rgba(255, 176, 32, 0.2);
+            color: var(--premium-color);
+            border: 1px solid var(--premium-color);
+            padding: 3px 8px;
+            font-size: 11px;
+            border-radius: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .logs-card {
+            grid-column: span 2;
+        }
+
+        @media (max-width: 900px) {
+            .logs-card {
+                grid-column: span 1;
+            }
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .terminal-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .terminal-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background-color: #ff5f56; }
+        .dot-yellow { background-color: #ffbd2e; }
+        .dot-green { background-color: #27c93f; }
+
+        .terminal-console {
+            background-color: #05080c;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            height: 200px;
+            overflow-y: auto;
+            color: #cfd8e3;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        .log-entry {
+            margin-bottom: 6px;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+
+        .log-entry.error { color: #ff5f56; }
+        .log-entry.success { color: var(--spotify-green); }
+        .log-entry.info { color: var(--telegram-blue); }
+        .log-entry.timestamp { color: var(--text-secondary); }
+
+        footer {
+            margin-top: 30px;
+            padding: 20px 0;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--card-border);
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: rgba(22, 28, 38, 0.95);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast i {
+            font-size: 18px;
+        }
+
+        .toast.success i { color: var(--spotify-green); }
+        .toast.error i { color: #ff5f56; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <header>
+            <div class="logo-area">
+                <div class="logo-icon-wrapper">
+                    <i class="fab fa-spotify"></i>
+                    <i class="fas fa-paper-plane"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>Sync Dashboard</h1>
+                    <p>Spotify ⇄ Telegram Engine Control</p>
+                </div>
+            </div>
+            <div id="syncStatusBadge" class="sync-badge active">
+                <div class="dot"></div>
+                <span id="syncStatusText">Engine Active</span>
+            </div>
+        </header>
+
+        <!-- Account Connection Center Card -->
+        <div class="card" id="connectionCenterCard" style="background: linear-gradient(135deg, rgba(22, 28, 38, 0.8) 0%, rgba(12, 17, 24, 0.8) 100%); margin-bottom: 24px; border-color: rgba(0, 136, 204, 0.2);">
+            <div class="card-header" style="border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 20px;">
+                <span class="card-title">
+                    <i class="fas fa-network-wired" style="color: var(--telegram-blue);"></i> Integration Hub
+                </span>
+                <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px;">Pair Accounts Securely</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <!-- Spotify Connection Column -->
+                <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--card-border); border-radius: 14px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fab fa-spotify" style="font-size: 28px; color: var(--spotify-green); filter: drop-shadow(0 0 8px var(--spotify-green));"></i>
+                        <div>
+                            <div style="font-size: 15px; font-weight: 700; font-family: 'Outfit', sans-serif;">Spotify Account</div>
+                            <div id="spotifyStatusText" style="font-size: 12px; color: var(--text-secondary);">Checking status...</div>
+                        </div>
+                    </div>
+                    <button class="btn" id="spotifyConnectBtn" style="background: linear-gradient(135deg, var(--spotify-green) 0%, #15833b 100%); box-shadow: 0 4px 15px rgba(29, 185, 84, 0.2); width: 100%; margin-top: 8px;" onclick="connectSpotify()">
+                        <i class="fab fa-spotify"></i> Link Spotify Account
+                    </button>
+                    <button class="btn" id="spotifyDisconnectBtn" style="background: rgba(255, 95, 86, 0.1); border: 1px solid rgba(255, 95, 86, 0.2); color: #ff5f56; box-shadow: none; width: 100%; margin-top: 8px; display: none;" onclick="disconnectSpotify()">
+                        <i class="fas fa-unlink"></i> Disconnect Spotify
+                    </button>
+                </div>
+                
+                <!-- Telegram Connection Column -->
+                <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--card-border); border-radius: 14px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-paper-plane" style="font-size: 24px; color: var(--telegram-blue); filter: drop-shadow(0 0 6px var(--telegram-blue));"></i>
+                        <div>
+                            <div style="font-size: 15px; font-weight: 700; font-family: 'Outfit', sans-serif;">Telegram Session</div>
+                            <div id="telegramStatusText" style="font-size: 12px; color: var(--text-secondary);">Checking status...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Telegram Disconnect Btn -->
+                    <button class="btn" id="telegramDisconnectBtn" style="background: rgba(255, 95, 86, 0.1); border: 1px solid rgba(255, 95, 86, 0.2); color: #ff5f56; box-shadow: none; width: 100%; margin-top: 8px; display: none;" onclick="disconnectTelegram()">
+                        <i class="fas fa-unlink"></i> Disconnect Telegram
+                    </button>
+                    
+                    <!-- Telegram Pairing Interactive Area -->
+                    <div id="tgPairingForm" style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+                        <!-- Step 1: Input Phone -->
+                        <div id="tgStepPhone" style="display: flex; flex-direction: column; gap: 8px;">
+                            <input type="text" id="tgPhoneInput" class="form-input" placeholder="+995577222769" style="background-color: rgba(12, 17, 24, 0.8);">
+                            <button class="btn" id="tgSendCodeBtn" onclick="sendTelegramCode()">
+                                <i class="fas fa-paper-plane"></i> Send OTP Code
+                            </button>
+                        </div>
+                        
+                        <!-- Step 2: Input Code & Password -->
+                        <div id="tgStepCode" style="display: none; flex-direction: column; gap: 8px;">
+                            <div style="font-size: 11px; color: var(--spotify-green); font-weight: 600; text-transform: uppercase;">Code sent to your Telegram!</div>
+                            <input type="text" id="tgCodeInput" class="form-input" placeholder="Enter Login OTP Code">
+                            
+                            <!-- 2FA Password field (hidden by default) -->
+                            <div id="tg2faGroup" style="display: none; flex-direction: column; gap: 6px;">
+                                <div style="font-size: 11px; color: #ffb020; font-weight: 600; text-transform: uppercase;">2FA Password Required</div>
+                                <input type="password" id="tg2faInput" class="form-input" placeholder="Enter 2FA Password">
+                            </div>
+                            
+                            <button class="btn" id="tgVerifyBtn" onclick="verifyTelegramCode()" style="background: linear-gradient(135deg, var(--spotify-green) 0%, #15833b 100%); box-shadow: 0 4px 15px rgba(29, 185, 84, 0.2);">
+                                <i class="fas fa-check"></i> Verify & Authenticate
+                            </button>
+                            <button class="btn" onclick="resetTgPairing()" style="background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: var(--text-secondary); box-shadow: none;">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            
+            <!-- Left Column: Music Widget & Status -->
+            <div class="card now-playing-card" id="nowPlayingCard">
+                <div class="card-header" style="width:100%; justify-content:center; margin-bottom:10px;">
+                    <span class="card-title" id="cardHeaderTitle" style="font-size:14px; font-weight:500; text-transform:uppercase; letter-spacing:1px; color:var(--text-secondary)">
+                        <i class="fab fa-spotify" style="color:var(--spotify-green)"></i> Spotify Player Status
+                    </span>
+                </div>
+
+                <div class="album-art-wrapper">
+                    <i class="fas fa-music album-art-placeholder" id="albumArtPlaceholder"></i>
+                    <img src="" alt="Album Art" class="album-art" id="albumArt">
+                </div>
+
+                <div class="track-title" id="trackTitle">Not Listening</div>
+                <div class="track-artist" id="trackArtist">Start playing music on Spotify</div>
+
+                <div class="visualizer" id="visualizer">
+                    <div class="visualizer-bar"></div>
+                    <div class="visualizer-bar"></div>
+                    <div class="visualizer-bar"></div>
+                    <div class="visualizer-bar"></div>
+                    <div class="visualizer-bar"></div>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                    </div>
+                    <div class="progress-time">
+                        <span id="timeElapsed">0:00</span>
+                        <span id="timeTotal">0:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Settings & Sync Controls -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">
+                        <i class="fas fa-sliders-h"></i> Profile Control Center
+                    </span>
+                    <span id="tierBadge" class="tier-badge">FREE</span>
+                </div>
+
+                <!-- Sync Engine Activation Toggle -->
+                <div class="control-row">
+                    <div class="control-label-wrapper">
+                        <span class="control-label">Live Spotify Sync</span>
+                        <span class="control-desc">Toggle name & bio auto-updates</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="syncToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <!-- Profile configuration inputs -->
+                <form id="settingsForm" onsubmit="saveSettings(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="firstName">
+                            <i class="far fa-user"></i> First Name
+                        </label>
+                        <input type="text" id="firstName" class="form-input" placeholder="Nino" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="lastName">
+                            <i class="far fa-id-card"></i> Original Last Name
+                        </label>
+                        <input type="text" id="lastName" class="form-input" placeholder="Keshelava" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="defaultBio">
+                            <i class="far fa-file-alt"></i> Default Bio
+                        </label>
+                        <input type="text" id="defaultBio" class="form-input" placeholder="Your default Telegram bio." required>
+                    </div>
+
+                    <!-- Custom Emoji ID config (Only customizable for Premium tier) -->
+                    <div class="form-group" id="emojiFormGroup" style="opacity: 0.5;">
+                        <label class="form-label" for="customEmojiId">
+                            <i class="far fa-smile"></i> Custom Emoji Status Document ID (Premium)
+                        </label>
+                        <input type="text" id="customEmojiId" class="form-input" placeholder="Custom Emoji Status ID" disabled>
+                    </div>
+
+                    <button type="submit" class="btn" id="saveBtn">
+                        <i class="fas fa-save"></i> Save Settings & Sync Profile
+                    </button>
+                </form>
+            </div>
+
+            <!-- Live Terminal Logger card -->
+            <div class="card logs-card">
+                <div class="terminal-header">
+                    <span class="card-title" style="color: #ffb020;">
+                        <i class="fas fa-terminal"></i> Live Sync Console
+                    </span>
+                    <div class="terminal-dots">
+                        <div class="terminal-dot dot-red"></div>
+                        <div class="terminal-dot dot-yellow"></div>
+                        <div class="terminal-dot dot-green"></div>
+                    </div>
+                </div>
+                <div class="terminal-console" id="terminalConsole">
+                    <!-- Logs dynamically streaming here -->
+                </div>
+            </div>
+
+        </div>
+
+        <footer>
+            <p>Antigravity Spotify ⇄ Telegram Mini App Dashboard © 2026. Built for seamless communication.</p>
+        </footer>
+
+    </div>
+
+    <!-- Toast Notification Overlay -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle" id="toastIcon"></i>
+        <span id="toastMessage">Changes saved successfully</span>
+    </div>
+
+    <script>
+        // Resolve user parameter from query URL, default to Nino's seeded profile "default_user"
+        const urlParams = new URLSearchParams(window.location.search);
+        const user_id = urlParams.get('user_id') || 'default_user';
+        const API_BASE = ""; 
+        
+        let trackProgressInterval = null;
+        let currentTrackDuration = 0;
+        let currentTrackProgress = 0;
+        let isPlaying = false;
+        let isSyncing = true;
+        let activeSongUrl = "";
+        let userTier = "free";
+
+        window.addEventListener("DOMContentLoaded", () => {
+            if (urlParams.get('spotify_success') === 'true') {
+                showToast("Spotify paired successfully!", true);
+                const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?user_id=' + user_id;
+                window.history.pushState({path:newurl},'',newurl);
+            }
+            fetchStatus();
+            fetchLogs();
+            setInterval(fetchStatus, 4000);
+            setInterval(fetchLogs, 4000);
+        });
+
+        document.getElementById("syncToggle").addEventListener("change", toggleSync);
+
+        document.getElementById("nowPlayingCard").addEventListener("click", () => {
+            if (isPlaying && activeSongUrl) {
+                window.open(activeSongUrl, "_blank");
+            }
+        });
+
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById("toast");
+            const toastIcon = document.getElementById("toastIcon");
+            const toastMsg = document.getElementById("toastMessage");
+
+            toastMsg.innerText = message;
+            if (isSuccess) {
+                toast.className = "toast success show";
+                toastIcon.className = "fas fa-check-circle";
+            } else {
+                toast.className = "toast error show";
+                toastIcon.className = "fas fa-exclamation-circle";
+            }
+
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, 3000);
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status?user_id=${user_id}`);
+                if (!response.ok) throw new Error("Network status invalid");
+                const data = await response.json();
+
+                const fNameInput = document.getElementById("firstName");
+                const lNameInput = document.getElementById("lastName");
+                const bioInput = document.getElementById("defaultBio");
+                const emojiInput = document.getElementById("customEmojiId");
+
+                if (document.activeElement !== fNameInput) fNameInput.value = data.first_name || "";
+                if (document.activeElement !== lNameInput) lNameInput.value = data.last_name || "";
+                if (document.activeElement !== bioInput) bioInput.value = data.default_bio || "";
+                if (document.activeElement !== emojiInput) emojiInput.value = data.custom_emoji_id || "";
+
+                isSyncing = data.is_syncing;
+                document.getElementById("syncToggle").checked = isSyncing;
+
+                const syncBadge = document.getElementById("syncStatusBadge");
+                const syncText = document.getElementById("syncStatusText");
+                if (isSyncing) {
+                    syncBadge.className = "sync-badge active";
+                    syncText.innerText = "Engine Active";
+                } else {
+                    syncBadge.className = "sync-badge paused";
+                    syncText.innerText = "Sync Paused";
+                }
+
+                // Handle Premium Tiers UI updates
+                userTier = data.tier || "free";
+                const tierBadge = document.getElementById("tierBadge");
+                const promo = document.getElementById("premiumPromoCard");
+                const emojiGroup = document.getElementById("emojiFormGroup");
+
+                tierBadge.innerText = userTier.toUpperCase();
+                if (userTier === "premium") {
+                    tierBadge.className = "tier-badge";
+                    tierBadge.style.backgroundColor = "rgba(255, 176, 32, 0.2)";
+                    tierBadge.style.color = "var(--premium-color)";
+                    tierBadge.style.border = "1px solid var(--premium-color)";
+                    promo.style.display = "none";
+                    emojiInput.disabled = false;
+                    emojiGroup.style.opacity = "1";
+                } else {
+                    tierBadge.className = "tier-badge";
+                    tierBadge.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
+                    tierBadge.style.color = "var(--text-secondary)";
+                    tierBadge.style.border = "1px solid var(--card-border)";
+                    promo.style.display = "block";
+                    emojiInput.disabled = true;
+                }
+
+                // Update Integration Statuses
+                const spotifyConnected = data.spotify_connected;
+                const telegramConnected = data.telegram_connected;
+
+                const spStatus = document.getElementById("spotifyStatusText");
+                const spConnectBtn = document.getElementById("spotifyConnectBtn");
+                const spDisconnectBtn = document.getElementById("spotifyDisconnectBtn");
+
+                if (spotifyConnected) {
+                    spStatus.innerText = "Connected & Active 🎧";
+                    spStatus.style.color = "var(--spotify-green)";
+                    spConnectBtn.style.display = "none";
+                    spDisconnectBtn.style.display = "block";
+                } else {
+                    spStatus.innerText = "Not Connected (Updates Paused)";
+                    spStatus.style.color = "var(--text-secondary)";
+                    spConnectBtn.style.display = "block";
+                    spDisconnectBtn.style.display = "none";
+                }
+
+                const tgStatus = document.getElementById("telegramStatusText");
+                const tgDisconnectBtn = document.getElementById("telegramDisconnectBtn");
+                const tgPairingForm = document.getElementById("tgPairingForm");
+
+                if (telegramConnected) {
+                    tgStatus.innerText = "Authorized & Syncing ⚡";
+                    tgStatus.style.color = "var(--telegram-blue)";
+                    tgDisconnectBtn.style.display = "block";
+                    tgPairingForm.style.display = "none";
+                } else {
+                    tgStatus.innerText = "Not Paired (Mini App Disabled)";
+                    tgStatus.style.color = "var(--text-secondary)";
+                    tgDisconnectBtn.style.display = "none";
+                    tgPairingForm.style.display = "flex";
+                }
+
+                const track = data.current_track;
+                const card = document.getElementById("nowPlayingCard");
+                const title = document.getElementById("trackTitle");
+                const artist = document.getElementById("trackArtist");
+                const img = document.getElementById("albumArt");
+                const placeholder = document.getElementById("albumArtPlaceholder");
+
+                isPlaying = track.playing;
+                currentTrackProgress = track.progress_ms;
+                currentTrackDuration = track.duration_ms;
+                activeSongUrl = track.song_url || "";
+
+                if (isPlaying) {
+                    card.classList.add("playing");
+                    document.getElementById("cardHeaderTitle").innerHTML = '<i class="fab fa-spotify" style="color:var(--spotify-green)"></i> Open in Spotify <i class="fas fa-external-link-alt" style="font-size:10px; margin-left:2px; vertical-align:middle; opacity:0.8"></i>';
+                    title.innerText = track.title;
+                    artist.innerText = track.artist;
+                    
+                    if (track.album_art) {
+                        img.src = track.album_art;
+                        img.classList.add("loaded");
+                        placeholder.style.display = "none";
+                    } else {
+                        img.src = "";
+                        img.classList.remove("loaded");
+                        placeholder.style.display = "block";
+                    }
+
+                    updateProgressBar();
+                    startLocalProgressTicker();
+                } else {
+                    card.classList.remove("playing");
+                    document.getElementById("cardHeaderTitle").innerHTML = '<i class="fab fa-spotify" style="color:var(--spotify-green)"></i> Spotify Player Status';
+                    title.innerText = "Not Listening";
+                    artist.innerText = isSyncing ? "Start playing music on Spotify" : "Resume Live Sync to monitor playback";
+                    img.src = "";
+                    img.classList.remove("loaded");
+                    placeholder.style.display = "block";
+                    
+                    document.getElementById("progressBarFill").style.width = "0%";
+                    document.getElementById("timeElapsed").innerText = "0:00";
+                    document.getElementById("timeTotal").innerText = "0:00";
+                    clearInterval(trackProgressInterval);
+                }
+            } catch (err) {
+                console.error("Error fetching status dashboard: ", err);
+            }
+        }
+
+        async function fetchLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/api/logs`);
+                if (!response.ok) throw new Error("Logs connection failed");
+                const data = await response.json();
+                
+                const consoleEl = document.getElementById("terminalConsole");
+                const shouldScroll = consoleEl.scrollHeight - consoleEl.scrollTop <= consoleEl.clientHeight + 40;
+
+                consoleEl.innerHTML = "";
+                data.logs.forEach(log => {
+                    const entry = document.createElement("div");
+                    entry.className = "log-entry";
+                    
+                    if (log.toLowerCase().includes("error") || log.toLowerCase().includes("failed")) {
+                        entry.classList.add("error");
+                    } else if (log.includes("Profile config saved") || log.includes("upgraded") || log.includes("successfully") || log.includes("Seeded")) {
+                        entry.classList.add("success");
+                    } else if (log.includes("Now playing") || log.includes("toggled")) {
+                        entry.classList.add("info");
+                    }
+                    
+                    entry.innerText = log;
+                    consoleEl.appendChild(entry);
+                });
+
+                if (shouldScroll && data.logs.length > 0) {
+                    consoleEl.scrollTop = consoleEl.scrollHeight;
+                }
+            } catch (err) {
+                console.error("Failed to load logs dashboard console: ", err);
+            }
+        }
+
+        async function toggleSync() {
+            try {
+                const response = await fetch(`${API_BASE}/api/toggle?user_id=${user_id}`, { method: "POST" });
+                if (!response.ok) throw new Error("Toggle engine request failed");
+                const data = await response.json();
+                
+                showToast(data.is_syncing ? "Live Spotify Sync Activated!" : "Live Spotify Sync Paused!", true);
+                fetchStatus();
+                fetchLogs();
+            } catch (err) {
+                showToast("Failed to toggle Sync status.", false);
+                console.error(err);
+            }
+        }
+
+        async function buyPremium() {
+            try {
+                const response = await fetch(`${API_BASE}/api/upgrade?user_id=${user_id}`, { method: "POST" });
+                if (!response.ok) throw new Error("Failed to purchase premium");
+                const data = await response.json();
+                if (data.success) {
+                    showToast("Premium status successfully unlocked via Stars!", true);
+                    fetchStatus();
+                    fetchLogs();
+                }
+            } catch (err) {
+                showToast("Payment failed.", false);
+            }
+        }
+
+        async function saveSettings(e) {
+            e.preventDefault();
+            const btn = document.getElementById("saveBtn");
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            const payload = {
+                first_name: document.getElementById("firstName").value.trim(),
+                last_name: document.getElementById("lastName").value.trim(),
+                default_bio: document.getElementById("defaultBio").value.trim(),
+                custom_emoji_id: document.getElementById("customEmojiId").value.trim()
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/settings?user_id=${user_id}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) throw new Error("Failed to save settings");
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast("Profile config saved and synchronized!", true);
+                } else {
+                    throw new Error(data.error || "Unknown server validation issue");
+                }
+            } catch (err) {
+                showToast(`Failed: ${err.message}`, false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Settings & Sync Profile';
+                fetchStatus();
+                fetchLogs();
+            }
+        }
+
+        function formatTime(ms) {
+            const totalSecs = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSecs / 60);
+            const seconds = totalSecs % 60;
+            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
+
+        function updateProgressBar() {
+            if (currentTrackDuration <= 0) return;
+            const pct = Math.min(100, (currentTrackProgress / currentTrackDuration) * 100);
+            document.getElementById("progressBarFill").style.width = `${pct}%`;
+            document.getElementById("timeElapsed").innerText = formatTime(currentTrackProgress);
+            document.getElementById("timeTotal").innerText = formatTime(currentTrackDuration);
+        }
+
+        function startLocalProgressTicker() {
+            clearInterval(trackProgressInterval);
+            if (!isPlaying) return;
+            
+            trackProgressInterval = setInterval(() => {
+                if (currentTrackProgress < currentTrackDuration) {
+                    currentTrackProgress += 1000;
+                    updateProgressBar();
+                } else {
+                    clearInterval(trackProgressInterval);
+                }
+            }, 1000);
+        }
+
+        async function connectSpotify() {
+            try {
+                const response = await fetch(`${API_BASE}/api/spotify/auth-url?user_id=${user_id}`);
+                if (!response.ok) throw new Error("Failed to request spotify authorization URL");
+                const data = await response.json();
+                if (data.success && data.auth_url) {
+                    window.location.href = data.auth_url;
+                } else {
+                    showToast(data.error || "Failed to generate auth url", false);
+                }
+            } catch (err) {
+                showToast("Failed to request Spotify pairing.", false);
+            }
+        }
+
+        async function disconnectSpotify() {
+            if (!confirm("Are you sure you want to disconnect Spotify?")) return;
+            try {
+                const response = await fetch(`${API_BASE}/api/spotify/disconnect?user_id=${user_id}`, { method: "POST" });
+                if (!response.ok) throw new Error("Failed to disconnect Spotify");
+                const data = await response.json();
+                if (data.success) {
+                    showToast("Spotify account disconnected.", true);
+                    fetchStatus();
+                    fetchLogs();
+                }
+            } catch (err) {
+                showToast("Failed to disconnect Spotify.", false);
+            }
+        }
+
+        async function sendTelegramCode() {
+            const phoneInput = document.getElementById("tgPhoneInput");
+            const phone = phoneInput.value.trim();
+            if (!phone) {
+                showToast("Phone number is required.", false);
+                return;
+            }
+            const btn = document.getElementById("tgSendCodeBtn");
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/telegram/send-code?user_id=${user_id}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ phone })
+                });
+                if (!response.ok) throw new Error("Failed to send verification code");
+                const data = await response.json();
+                if (data.success) {
+                    showToast("OTP verification code sent!", true);
+                    document.getElementById("tgStepPhone").style.display = "none";
+                    document.getElementById("tgStepCode").style.display = "flex";
+                } else {
+                    showToast(data.error || "Failed to send code", false);
+                }
+            } catch (err) {
+                showToast("Error sending Telegram code.", false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP Code';
+            }
+        }
+
+        async function verifyTelegramCode() {
+            const codeInput = document.getElementById("tgCodeInput");
+            const code = codeInput.value.trim();
+            if (!code) {
+                showToast("OTP verification code is required.", false);
+                return;
+            }
+            const btn = document.getElementById("tgVerifyBtn");
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+
+            const payload = { code };
+            
+            const is2fa = document.getElementById("tg2faGroup").style.display === "flex";
+            if (is2fa) {
+                const pwd = document.getElementById("tg2faInput").value;
+                if (!pwd) {
+                    showToast("2FA Password is required.", false);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Verify & Authenticate';
+                    return;
+                }
+                verifyTelegramPassword(pwd);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/telegram/verify-code?user_id=${user_id}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error("Failed to verify code");
+                const data = await response.json();
+                if (data.success) {
+                    if (data.password_required) {
+                        showToast("Two-Factor Authentication password required.", true);
+                        document.getElementById("tg2faGroup").style.display = "flex";
+                    } else {
+                        showToast("Telegram account paired successfully!", true);
+                        resetTgPairing();
+                        fetchStatus();
+                        fetchLogs();
+                    }
+                } else {
+                    showToast(data.error || "Failed to verify code", false);
+                }
+            } catch (err) {
+                showToast("Error verifying OTP code.", false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Verify & Authenticate';
+            }
+        }
+
+        async function verifyTelegramPassword(password) {
+            const btn = document.getElementById("tgVerifyBtn");
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/telegram/verify-password?user_id=${user_id}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ password })
+                });
+                if (!response.ok) throw new Error("Failed to verify 2FA password");
+                const data = await response.json();
+                if (data.success) {
+                    showToast("Telegram authenticated and connected!", true);
+                    resetTgPairing();
+                    fetchStatus();
+                    fetchLogs();
+                } else {
+                    showToast(data.error || "Invalid 2FA password.", false);
+                }
+            } catch (err) {
+                showToast("Error verifying password.", false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Verify & Authenticate';
+            }
+        }
+
+        async function disconnectTelegram() {
+            if (!confirm("Are you sure you want to disconnect Telegram? All status updates will stop.")) return;
+            try {
+                const response = await fetch(`${API_BASE}/api/telegram/disconnect?user_id=${user_id}`, { method: "POST" });
+                if (!response.ok) throw new Error("Failed to disconnect Telegram");
+                const data = await response.json();
+                if (data.success) {
+                    showToast("Telegram session disconnected.", true);
+                    fetchStatus();
+                    fetchLogs();
+                }
+            } catch (err) {
+                showToast("Failed to disconnect Telegram.", false);
+            }
+        }
+
+        function resetTgPairing() {
+            document.getElementById("tgStepPhone").style.display = "flex";
+            document.getElementById("tgStepCode").style.display = "none";
+            document.getElementById("tg2faGroup").style.display = "none";
+            document.getElementById("tgPhoneInput").value = "";
+            document.getElementById("tgCodeInput").value = "";
+            document.getElementById("tg2faInput").value = "";
+        }
+    </script>
+</body>
+</html>
