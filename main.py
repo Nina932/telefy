@@ -52,7 +52,7 @@ if not database.get_user(default_telegram_id):
     database.save_user(
         telegram_id=default_telegram_id,
         phone=os.getenv('TELEGRAM_PHONE', '+995577222769'),
-        session_string=session_str or "spotify_user_session",
+        session_string=session_str or None,
         first_name=os.getenv('ORIGINAL_FIRST_NAME', 'Nino'),
         last_name=os.getenv('ORIGINAL_LAST_NAME', 'Keshelava'),
         default_bio=os.getenv('DEFAULT_BIO', "Your default telegram bio goes here."),
@@ -438,6 +438,9 @@ def compute_profile_fields(usr, track_name, artist_name, track_id, scroll_offset
 async def sync_single_user(usr, client_cache):
     telegram_id = usr["telegram_id"]
     try:
+        if not usr["session_string"] or not usr["spotify_refresh_token"]:
+            return
+
         client = client_cache.get(telegram_id)
         if not client:
             if usr["session_string"] == "spotify_user_session":
