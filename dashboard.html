@@ -633,6 +633,69 @@
             grid-column: span 2;
         }
 
+        .assistant-card {
+            grid-column: span 2;
+            background:
+                radial-gradient(circle at 12% 0%, rgba(22, 167, 232, 0.18), transparent 34%),
+                radial-gradient(circle at 100% 100%, rgba(29, 185, 84, 0.16), transparent 36%),
+                linear-gradient(135deg, rgba(255,255,255,0.075), rgba(255,255,255,0.018)),
+                var(--card-bg);
+        }
+
+        .assistant-layout {
+            display: grid;
+            grid-template-columns: 1.25fr 0.75fr;
+            gap: 16px;
+            align-items: stretch;
+        }
+
+        .suggestion-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .suggestion-item {
+            display: flex;
+            gap: 11px;
+            align-items: flex-start;
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            background: rgba(5, 8, 12, 0.32);
+        }
+
+        .suggestion-item i {
+            width: 18px;
+            margin-top: 2px;
+            color: var(--telegram-blue);
+        }
+
+        .suggestion-title {
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 3px;
+        }
+
+        .suggestion-copy {
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .assistant-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 14px;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+        }
+
+        .assistant-actions .btn {
+            justify-content: center;
+        }
+
         .health-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1001,6 +1064,10 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
+            .assistant-layout {
+                grid-template-columns: 1fr;
+            }
+
             .toast {
                 left: 18px;
                 right: 18px;
@@ -1335,6 +1402,37 @@
                 </form>
             </div>
 
+            <div class="card assistant-card">
+                <div class="card-header">
+                    <span class="card-title">
+                        <i class="fas fa-wand-magic-sparkles"></i> Smart Assistant
+                    </span>
+                    <span class="section-kicker">Next Best Actions</span>
+                </div>
+                <div class="assistant-layout">
+                    <div class="suggestion-list" id="suggestionList">
+                        <div class="suggestion-item">
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                            <div>
+                                <div class="suggestion-title">Checking your setup</div>
+                                <div class="suggestion-copy">Telefy is looking at your account connections and playback state.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="assistant-actions">
+                        <button class="btn" onclick="inviteFriend()">
+                            <i class="fas fa-user-plus"></i> Invite Friend
+                        </button>
+                        <button class="btn quiet-btn" onclick="restoreProfile()">
+                            <i class="fas fa-rotate-left"></i> Restore Profile
+                        </button>
+                        <button class="btn quiet-btn" onclick="openTelegramBot()">
+                            <i class="fab fa-telegram"></i> Bot Controls
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- User-oriented sync health card -->
             <div class="card sync-health-card">
                 <div class="terminal-header">
@@ -1589,9 +1687,81 @@
                 }
 
                 updateSyncHealth(data);
+                updateSuggestions(data);
             } catch (err) {
                 console.error("Error fetching status dashboard: ", err);
             }
+        }
+
+        function updateSuggestions(data) {
+            const list = document.getElementById("suggestionList");
+            const track = data.current_track || {};
+            const suggestions = [];
+
+            if (!data.spotify_connected) {
+                suggestions.push({
+                    icon: "fab fa-spotify",
+                    title: "Connect Spotify",
+                    copy: "Spotify is needed so Telefy can read your currently playing song."
+                });
+            }
+            if (!data.telegram_connected) {
+                suggestions.push({
+                    icon: "fas fa-paper-plane",
+                    title: "Authorize Telegram",
+                    copy: "Telegram authorization lets Telefy update your profile name and bio."
+                });
+            }
+            if (data.spotify_connected && data.telegram_connected && !data.is_syncing) {
+                suggestions.push({
+                    icon: "fas fa-toggle-off",
+                    title: "Resume automatic sync",
+                    copy: "Everything is connected, but profile updates are paused."
+                });
+            }
+            if (data.spotify_connected && data.telegram_connected && data.is_syncing && track.playing) {
+                suggestions.push({
+                    icon: "fas fa-shield-halved",
+                    title: "Sync is protected",
+                    copy: "Telefy updates safely with a cooldown so Telegram does not rate-limit your account."
+                });
+            }
+            if (data.spotify_connected && data.telegram_connected && data.is_syncing && !track.playing) {
+                suggestions.push({
+                    icon: "fas fa-music",
+                    title: "Start Spotify playback",
+                    copy: "Play a song and Telefy will prepare the Telegram profile update."
+                });
+            }
+            if (!data.default_bio || data.default_bio.toLowerCase().includes("default telegram bio")) {
+                suggestions.push({
+                    icon: "fas fa-pen",
+                    title: "Customize your idle bio",
+                    copy: "Set a natural bio that Telefy restores when you stop listening."
+                });
+            }
+
+            if (!suggestions.length) {
+                suggestions.push({
+                    icon: "fas fa-circle-check",
+                    title: "Everything looks ready",
+                    copy: "Your connections, sync state, and idle profile settings are in good shape."
+                });
+            }
+
+            list.innerHTML = "";
+            suggestions.slice(0, 3).forEach(item => {
+                const row = document.createElement("div");
+                row.className = "suggestion-item";
+                row.innerHTML = `
+                    <i class="${item.icon}"></i>
+                    <div>
+                        <div class="suggestion-title">${item.title}</div>
+                        <div class="suggestion-copy">${item.copy}</div>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
         }
 
         function updateSyncHealth(data) {
@@ -1707,6 +1877,40 @@
             } catch (err) {
                 showToast("Failed to toggle Sync status.", false);
                 console.error(err);
+            }
+        }
+
+        async function restoreProfile() {
+            if (!confirm("Restore your idle Telegram profile and pause automatic sync?")) return;
+            try {
+                const response = await fetch(`${API_BASE}/api/restore-profile?user_id=${user_id}`, { method: "POST" });
+                if (!response.ok) throw new Error("Restore request failed");
+                const data = await response.json();
+                showToast(data.message || "Restore requested.", data.success);
+                fetchStatus();
+                fetchLogs();
+            } catch (err) {
+                showToast("Failed to restore Telegram profile.", false);
+            }
+        }
+
+        function inviteFriend() {
+            const shareUrl = `${window.location.origin}/?ref=${encodeURIComponent(user_id)}`;
+            const shareText = "Use Telefy to show your Spotify status on Telegram.";
+            const telegramShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+            if (telegramApp?.openTelegramLink) {
+                telegramApp.openTelegramLink(telegramShare);
+            } else {
+                window.open(telegramShare, "_blank");
+            }
+        }
+
+        function openTelegramBot() {
+            const botUrl = "https://t.me/Telefy1_bot";
+            if (telegramApp?.openTelegramLink) {
+                telegramApp.openTelegramLink(botUrl);
+            } else {
+                window.open(botUrl, "_blank");
             }
         }
 

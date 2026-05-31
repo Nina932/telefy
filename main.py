@@ -62,6 +62,41 @@ def normalize_profile_config(usr):
         return database.get_user(usr["telegram_id"])
     return usr
 
+async def apply_idle_profile(usr):
+    usr = normalize_profile_config(usr)
+    if not usr["session_string"]:
+        return False, "Telegram is not connected."
+
+    if usr["session_string"] == "spotify_user_session":
+        client = TelegramClient('spotify_user_session', API_ID, API_HASH)
+    else:
+        client = TelegramClient(StringSession(usr["session_string"]), API_ID, API_HASH)
+    try:
+        await client.connect()
+        if not await client.is_user_authorized():
+            return False, "Telegram session is no longer authorized."
+
+        await client(UpdateProfileRequest(
+            first_name=usr["first_name"],
+            last_name=usr["last_name"],
+            about=usr["default_bio"]
+        ))
+
+        if usr["tier"] == "premium":
+            try:
+                from telethon.tl.functions.account import UpdateEmojiStatusRequest
+                from telethon.tl.types import EmojiStatusEmpty
+                await client(UpdateEmojiStatusRequest(emoji_status=EmojiStatusEmpty()))
+            except Exception:
+                pass
+
+        return True, "Telegram profile restored to idle settings."
+    except FloodWaitError as e:
+        minutes = max(1, round(int(getattr(e, "seconds", 300)) / 60))
+        return False, f"Telegram asked us to wait about {minutes} min before another profile update."
+    finally:
+        await client.disconnect()
+
 # Seed initial user into database to support transition seamlessly
 default_telegram_id = "default_user"
 if not database.get_user(default_telegram_id):
@@ -223,6 +258,20 @@ async def handle_client(reader, writer):
             else:
                 status_code = "404 Not Found"
                 response_body = json.dumps({"error": "User not found"})
+            content_type = "application/json"
+        elif method == 'POST' and path == '/api/restore-profile':
+            usr = database.get_user(user_id)
+            if usr:
+                database.save_user(user_id, is_syncing=0)
+                users_playback_state[user_id] = {
+                    "playing": False, "title": "", "artist": "", "progress_ms": 0, "duration_ms": 0, "album_art": "", "song_url": ""
+                }
+                success, message = await apply_idle_profile(usr)
+                add_log(f"Restore profile requested for {user_id}: {message}")
+                response_body = json.dumps({"success": success, "message": message})
+            else:
+                status_code = "404 Not Found"
+                response_body = json.dumps({"success": False, "message": "User not found."})
             content_type = "application/json"
         elif method == 'POST' and path == '/api/settings':
             try:
@@ -601,6 +650,13 @@ async def run_telegram_bot():
     else:
         add_log(f"🚀 Telegram Mini App WebApp URL configured to: {WEBAPP_URL}")
 
+    def dashboard_button(telegram_id):
+        return ReplyInlineMarkup(rows=[
+            KeyboardButtonRow(buttons=[
+                KeyboardButtonWebView(text="Open Telefy App", url=f"{WEBAPP_URL}/?user_id={telegram_id}")
+            ])
+        ])
+
     @bot_client.on(events.NewMessage(pattern='/start'))
     async def start_handler(event):
         telegram_id = str(event.sender_id)
@@ -631,6 +687,81 @@ async def run_telegram_bot():
             "Welcome to **Telefy**! 🎧\n\nClick the button below to open your personal dashboard and connect Spotify & Telegram.",
             buttons=markup
         )
+
+    @bot_client.on(events.NewMessage(pattern='/app'))
+    async def app_handler(event):
+        telegram_id = str(event.sender_id)
+        await bot_client.send_message(
+            event.chat_id,
+            "Open your Telefy dashboard:",
+            buttons=dashboard_button(telegram_id)
+        )
+
+    @bot_client.on(events.NewMessage(pattern='/pause'))
+    async def pause_handler(event):
+        telegram_id = str(event.sender_id)
+        if database.get_user(telegram_id):
+            database.save_user(telegram_id, is_syncing=0)
+            add_log(f"Sync toggled for {telegram_id} to: PAUSED")
+            await event.reply("Telefy sync is paused. Use /resume when you want automatic updates again.")
+        else:
+            await event.reply("Open Telefy first with /start, then pair your accounts.")
+
+    @bot_client.on(events.NewMessage(pattern='/resume'))
+    async def resume_handler(event):
+        telegram_id = str(event.sender_id)
+        if database.get_user(telegram_id):
+            database.save_user(telegram_id, is_syncing=1)
+            add_log(f"Sync toggled for {telegram_id} to: ACTIVE")
+            await event.reply("Telefy sync is active. Your Telegram profile will update from Spotify when a track is playing.")
+        else:
+            await event.reply("Open Telefy first with /start, then pair your accounts.")
+
+    @bot_client.on(events.NewMessage(pattern='/status'))
+    async def status_handler(event):
+        telegram_id = str(event.sender_id)
+        usr = database.get_user(telegram_id)
+        if not usr:
+            await event.reply("Open Telefy first with /start, then pair your accounts.")
+            return
+
+        track = users_playback_state.get(telegram_id, {})
+        lines = [
+            f"Sync: {'active' if usr['is_syncing'] else 'paused'}",
+            f"Spotify: {'connected' if usr['spotify_refresh_token'] else 'not connected'}",
+            f"Telegram: {'connected' if usr['session_string'] else 'not connected'}",
+        ]
+        if track.get("playing"):
+            lines.append(f"Now playing: {track.get('title', 'Unknown')} - {track.get('artist', 'Unknown')}")
+        else:
+            lines.append("Now playing: nothing detected")
+        await event.reply("\n".join(lines), buttons=dashboard_button(telegram_id))
+
+    @bot_client.on(events.NewMessage(pattern='/restore'))
+    async def restore_handler(event):
+        telegram_id = str(event.sender_id)
+        usr = database.get_user(telegram_id)
+        if not usr:
+            await event.reply("Open Telefy first with /start, then pair your accounts.")
+            return
+
+        database.save_user(telegram_id, is_syncing=0)
+        users_playback_state[telegram_id] = {
+            "playing": False, "title": "", "artist": "", "progress_ms": 0, "duration_ms": 0, "album_art": "", "song_url": ""
+        }
+        success, message = await apply_idle_profile(usr)
+        add_log(f"Restore profile requested for {telegram_id}: {message}")
+        await event.reply(message if success else f"Restore is queued safely. {message}")
+
+    @bot_client.on(events.NewMessage(pattern='/invite'))
+    async def invite_handler(event):
+        telegram_id = str(event.sender_id)
+        share_url = (
+            "https://t.me/share/url?"
+            f"url={urllib.parse.quote(WEBAPP_URL)}&"
+            f"text={urllib.parse.quote('Use Telefy to show your Spotify status on Telegram.')}"
+        )
+        await event.reply(f"Share Telefy with a friend:\n{share_url}", buttons=dashboard_button(telegram_id))
 
     await bot_client.run_until_disconnected()
 
