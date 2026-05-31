@@ -8,12 +8,13 @@
     <!-- Premium Typography and Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
     <style>
         :root {
             --bg-color: #0b0e14;
-            --card-bg: rgba(18, 25, 35, 0.72);
-            --card-border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(18, 25, 35, 0.58);
+            --card-border: rgba(255, 255, 255, 0.13);
             --spotify-green: #1db954;
             --spotify-glow: rgba(29, 185, 84, 0.3);
             --telegram-blue: #16a7e8;
@@ -21,8 +22,8 @@
             --text-primary: #ffffff;
             --text-secondary: #9aa8bb;
             --premium-color: #ffb020;
-            --accent-glow: linear-gradient(135deg, rgba(22, 167, 232, 0.13), transparent 34%),
-                           linear-gradient(315deg, rgba(29, 185, 84, 0.12), transparent 42%);
+            --accent-glow: linear-gradient(135deg, rgba(22, 167, 232, 0.18), transparent 34%),
+                           linear-gradient(315deg, rgba(29, 185, 84, 0.16), transparent 42%);
         }
 
         * {
@@ -56,6 +57,7 @@
                 linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
             background-size: 34px 34px;
             mask-image: linear-gradient(to bottom, black, transparent 78%);
+            animation: gridDrift 18s linear infinite;
         }
 
         body::after {
@@ -66,6 +68,11 @@
             pointer-events: none;
             background: linear-gradient(180deg, transparent, rgba(29, 185, 84, 0.08) 45%, rgba(22, 167, 232, 0.1));
             opacity: 0.7;
+        }
+
+        @keyframes gridDrift {
+            from { background-position: 0 0; }
+            to { background-position: 34px 34px; }
         }
 
         .container {
@@ -607,9 +614,9 @@
 
         .connection-card {
             background:
-                linear-gradient(135deg, rgba(22, 167, 232, 0.12), transparent 45%),
-                linear-gradient(315deg, rgba(29, 185, 84, 0.1), transparent 52%),
-                rgba(14, 21, 31, 0.86);
+                linear-gradient(135deg, rgba(22, 167, 232, 0.18), transparent 45%),
+                linear-gradient(315deg, rgba(29, 185, 84, 0.16), transparent 52%),
+                rgba(14, 21, 31, 0.62);
             margin-bottom: 24px;
             border-color: rgba(0, 136, 204, 0.2);
         }
@@ -641,7 +648,7 @@
             gap: 12px;
             min-width: 0;
             padding: 16px;
-            background: rgba(255, 255, 255, 0.025);
+            background: linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018));
             border: 1px solid var(--card-border);
             border-radius: 8px;
             box-shadow: inset 3px 0 0 rgba(154, 168, 187, 0.18);
@@ -662,12 +669,13 @@
         }
 
         .connection-panel.connected {
-            background: rgba(255,255,255,0.045);
+            background: linear-gradient(135deg, rgba(29,185,84,0.12), rgba(255,255,255,0.04));
             border-color: rgba(29, 185, 84, 0.32);
         }
 
         .connection-panel.telegram-panel.connected {
             border-color: rgba(22, 167, 232, 0.34);
+            background: linear-gradient(135deg, rgba(22,167,232,0.13), rgba(255,255,255,0.04));
         }
 
         .connection-heading {
@@ -1241,7 +1249,7 @@
         </div>
 
         <footer>
-            <p>Antigravity Spotify ⇄ Telegram Mini App Dashboard © 2026. Built for seamless communication.</p>
+            <p>Telefy Spotify ⇄ Telegram Mini App Dashboard © 2026. Built for seamless communication.</p>
         </footer>
 
     </div>
@@ -1253,9 +1261,20 @@
     </div>
 
     <script>
-        // Resolve user parameter from query URL, default to Nino's seeded profile "default_user"
+        // Resolve user from query first, then Telegram Mini App identity, then local session memory.
         const urlParams = new URLSearchParams(window.location.search);
-        const user_id = urlParams.get('user_id') || 'default_user';
+        const telegramApp = window.Telegram?.WebApp;
+        telegramApp?.ready();
+        telegramApp?.expand();
+
+        const telegramUserId = telegramApp?.initDataUnsafe?.user?.id
+            ? String(telegramApp.initDataUnsafe.user.id)
+            : null;
+        const storedUserId = localStorage.getItem("telefy_user_id");
+        const user_id = urlParams.get('user_id') || telegramUserId || storedUserId || 'default_user';
+        if (user_id !== 'default_user') {
+            localStorage.setItem("telefy_user_id", user_id);
+        }
         const API_BASE = ""; 
         
         let trackProgressInterval = null;
@@ -1271,6 +1290,9 @@
                 showToast("Spotify paired successfully!", true);
                 const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?user_id=' + user_id;
                 window.history.pushState({path:newurl},'',newurl);
+            } else if (!urlParams.get('user_id') && user_id !== 'default_user') {
+                const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?user_id=' + user_id;
+                window.history.replaceState({path:newurl},'',newurl);
             }
             fetchStatus();
             fetchLogs();

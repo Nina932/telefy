@@ -62,7 +62,7 @@ if not database.get_user(default_telegram_id):
     add_log("Seeded default user into sqlite DB.")
 
 users_playback_state = {}
-MIN_PROFILE_UPDATE_SECONDS = int(os.getenv("MIN_PROFILE_UPDATE_SECONDS", "300"))
+MIN_PROFILE_UPDATE_SECONDS = int(os.getenv("MIN_PROFILE_UPDATE_SECONDS", "75"))
 
 def get_spotify_client(refresh_token):
     if not refresh_token:
@@ -535,15 +535,9 @@ async def sync_single_user(usr, client_cache):
                 "song_url": current_track['item']['external_urls']['spotify'] if current_track['item'].get('external_urls') and 'spotify' in current_track['item']['external_urls'] else ""
             }
 
-            new_last_name, new_bio = compute_profile_fields(usr, track_name, artist_name, track_id, scroll_offset)
+            new_last_name, new_bio = compute_profile_fields(usr, track_name, artist_name, track_id, 0)
             emoji_status = usr["custom_emoji_id"] if usr["tier"] == "premium" and usr["custom_emoji_id"] else None
             await update_profile_if_allowed(usr["first_name"], new_last_name, new_bio, emoji_status)
-
-            prefix_len = len("🎧 ")
-            full_info = f"{track_name} - {artist_name}"
-            if len(full_info) > 64 - prefix_len:
-                scroll_offset = (scroll_offset + 3) % len(full_info + "   ")
-                client_cache[scroll_key] = scroll_offset
         else:
             client_cache[scroll_key] = 0
             client_cache[last_song_key] = None
