@@ -162,7 +162,7 @@
 
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 1fr 1.2fr;
+            grid-template-columns: minmax(0, 1fr);
             gap: 12px;
         }
 
@@ -630,11 +630,11 @@
         }
 
         .sync-health-card {
-            grid-column: span 2;
+            grid-column: auto;
         }
 
         .assistant-card {
-            grid-column: span 2;
+            grid-column: auto;
             background:
                 radial-gradient(circle at 12% 0%, rgba(22, 167, 232, 0.18), transparent 34%),
                 radial-gradient(circle at 100% 100%, rgba(29, 185, 84, 0.16), transparent 36%),
@@ -1387,67 +1387,6 @@
                 </div>
             </div>
 
-            <!-- Right Column: Settings & Sync Controls -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title">
-                        <i class="fas fa-sliders-h"></i> Sync Preferences
-                    </span>
-                    <span id="tierBadge" class="tier-badge">FREE</span>
-                </div>
-
-                <!-- Sync Engine Activation Toggle -->
-                <div class="control-row">
-                    <div class="control-label-wrapper">
-                        <span class="control-label">Update Telegram Automatically</span>
-                        <span class="control-desc">Shows the current Spotify song in your Telegram profile</span>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="syncToggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <!-- Profile configuration inputs -->
-                <form id="settingsForm" onsubmit="saveSettings(event)">
-                    <div class="form-group">
-                        <label class="form-label" for="firstName">
-                            <i class="far fa-user"></i> First Name
-                        </label>
-                        <input type="text" id="firstName" class="form-input" placeholder="Nino" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="lastName">
-                            <i class="far fa-id-card"></i> Last Name When Idle
-                        </label>
-                        <input type="text" id="lastName" class="form-input" placeholder="Keshelava" required>
-                        <div class="field-helper">Used when Spotify is paused or no track is playing.</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="defaultBio">
-                            <i class="far fa-file-alt"></i> Bio When Idle
-                        </label>
-                        <input type="text" id="defaultBio" class="form-input" placeholder="Your default Telegram bio." required>
-                        <div class="field-helper">This is restored when the music status is not active.</div>
-                    </div>
-
-                    <!-- Custom Emoji ID config (Only customizable for Premium tier) -->
-                    <div class="form-group" id="emojiFormGroup" style="opacity: 0.5;">
-                        <label class="form-label" for="customEmojiId">
-                            <i class="far fa-smile"></i> Telegram Premium Emoji Status
-                        </label>
-                        <input type="text" id="customEmojiId" class="form-input" placeholder="Optional custom emoji document ID" disabled>
-                        <div class="field-helper" id="emojiHelper">Advanced Telegram Premium-only status emoji. Leave empty if you only want name and bio sync.</div>
-                    </div>
-
-                    <button type="submit" class="btn" id="saveBtn">
-                        <i class="fas fa-save"></i> Save Sync Preferences
-                    </button>
-                </form>
-            </div>
-
             <div class="card assistant-card">
                 <div class="card-header">
                     <span class="card-title">
@@ -1466,6 +1405,9 @@
                         </div>
                     </div>
                     <div class="assistant-actions">
+                        <button class="btn" id="syncQuickBtn" onclick="toggleSync()">
+                            <i class="fas fa-pause"></i> Pause
+                        </button>
                         <button class="btn" onclick="inviteFriend()">
                             <i class="fas fa-user-plus"></i> Invite Friend
                         </button>
@@ -1567,8 +1509,6 @@
             setInterval(fetchLogs, 4000);
         });
 
-        document.getElementById("syncToggle").addEventListener("change", toggleSync);
-
         document.getElementById("nowPlayingCard").addEventListener("click", () => {
             if (isPlaying && activeSongUrl) {
                 window.open(activeSongUrl, "_blank");
@@ -1600,18 +1540,7 @@
                 if (!response.ok) throw new Error("Network status invalid");
                 const data = await response.json();
 
-                const fNameInput = document.getElementById("firstName");
-                const lNameInput = document.getElementById("lastName");
-                const bioInput = document.getElementById("defaultBio");
-                const emojiInput = document.getElementById("customEmojiId");
-
-                if (document.activeElement !== fNameInput) fNameInput.value = data.first_name || "";
-                if (document.activeElement !== lNameInput) lNameInput.value = data.last_name || "";
-                if (document.activeElement !== bioInput) bioInput.value = data.default_bio || "";
-                if (document.activeElement !== emojiInput) emojiInput.value = data.custom_emoji_id || "";
-
                 isSyncing = data.is_syncing;
-                document.getElementById("syncToggle").checked = isSyncing;
 
                 const syncBadge = document.getElementById("syncStatusBadge");
                 const syncText = document.getElementById("syncStatusText");
@@ -1622,32 +1551,7 @@
                     syncBadge.className = "sync-badge paused";
                     syncText.innerText = "Sync Paused";
                 }
-
-                // Handle Premium Tiers UI updates
-                userTier = data.tier || "free";
-                const tierBadge = document.getElementById("tierBadge");
-                const emojiGroup = document.getElementById("emojiFormGroup");
-                const emojiHelper = document.getElementById("emojiHelper");
-
-                tierBadge.innerText = userTier.toUpperCase();
-                if (userTier === "premium") {
-                    tierBadge.className = "tier-badge";
-                    tierBadge.style.backgroundColor = "rgba(255, 176, 32, 0.2)";
-                    tierBadge.style.color = "var(--premium-color)";
-                    tierBadge.style.border = "1px solid var(--premium-color)";
-                    emojiInput.disabled = false;
-                    emojiGroup.style.opacity = "1";
-                    emojiGroup.style.display = "flex";
-                    emojiHelper.innerText = "Functional for Telegram Premium accounts: paste a custom emoji document ID to set the profile status emoji while music is playing.";
-                } else {
-                    tierBadge.className = "tier-badge";
-                    tierBadge.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
-                    tierBadge.style.color = "var(--text-secondary)";
-                    tierBadge.style.border = "1px solid var(--card-border)";
-                    emojiInput.disabled = true;
-                    emojiGroup.style.display = "none";
-                    emojiHelper.innerText = "Advanced Telegram Premium-only option. Standard users can leave this empty.";
-                }
+                updateQuickSyncButton(isSyncing);
 
                 // Update Integration Statuses
                 const spotifyConnected = data.spotify_connected;
@@ -1739,6 +1643,15 @@
             } catch (err) {
                 console.error("Error fetching status dashboard: ", err);
             }
+        }
+
+        function updateQuickSyncButton(active) {
+            const btn = document.getElementById("syncQuickBtn");
+            if (!btn) return;
+            btn.className = active ? "btn quiet-btn" : "btn";
+            btn.innerHTML = active
+                ? '<i class="fas fa-pause"></i> Pause'
+                : '<i class="fas fa-play"></i> Resume';
         }
 
         function updateSuggestions(data) {
@@ -1870,7 +1783,7 @@
                 return { icon: "fas fa-paper-plane", type: "good", text: "Telegram is authorized for profile updates." };
             }
             if (lower.includes("profile config updated")) {
-                return { icon: "fas fa-user-check", type: "good", text: "Your sync preferences were saved." };
+                return { icon: "fas fa-user-check", type: "good", text: "Your changes were saved." };
             }
             if (lower.includes("sync toggled") && lower.includes("active")) {
                 return { icon: "fas fa-toggle-on", type: "good", text: "Automatic Spotify-to-Telegram sync is active." };
@@ -1974,44 +1887,6 @@
                 }
             } catch (err) {
                 showToast("Payment failed.", false);
-            }
-        }
-
-        async function saveSettings(e) {
-            e.preventDefault();
-            const btn = document.getElementById("saveBtn");
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-
-            const payload = {
-                first_name: document.getElementById("firstName").value.trim(),
-                last_name: document.getElementById("lastName").value.trim(),
-                default_bio: document.getElementById("defaultBio").value.trim(),
-                custom_emoji_id: document.getElementById("customEmojiId").value.trim()
-            };
-
-            try {
-                const response = await fetch(`${API_BASE}/api/settings?user_id=${user_id}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (!response.ok) throw new Error("Failed to save settings");
-                const data = await response.json();
-                
-                if (data.success) {
-                    showToast("Profile config saved and synchronized!", true);
-                } else {
-                    throw new Error(data.error || "Unknown server validation issue");
-                }
-            } catch (err) {
-                showToast(`Failed: ${err.message}`, false);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save"></i> Save Sync Preferences';
-                fetchStatus();
-                fetchLogs();
             }
         }
 
