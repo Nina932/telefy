@@ -30,6 +30,9 @@ WEBAPP_URL = os.getenv('WEBAPP_URL') or os.getenv('PUBLIC_URL') or 'http://127.0
 SPOTIFY_REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI') or f"{WEBAPP_URL.rstrip('/')}/callback"
 APP_HOST = os.getenv('APP_HOST', '127.0.0.1')
 APP_PORT = int(os.getenv('APP_PORT') or os.getenv('PORT', '8080'))
+ORIGINAL_FIRST_NAME = os.getenv('ORIGINAL_FIRST_NAME', 'Nino')
+ORIGINAL_LAST_NAME = os.getenv('ORIGINAL_LAST_NAME', 'Keshelava')
+DEFAULT_BIO = os.getenv('DEFAULT_BIO', "Your default telegram bio goes here.")
 
 log_buffer = []
 
@@ -38,6 +41,26 @@ def add_log(msg):
     if len(log_buffer) > 100:
         log_buffer.pop(0)
     print(msg, flush=True)
+
+def looks_like_generated_status(value):
+    if not value:
+        return False
+    return (
+        value.startswith("🎧 ")
+        or value.startswith("ðŸŽ§ ")
+        or "open.spotify.com/track/" in value
+    )
+
+def normalize_profile_config(usr):
+    fixes = {}
+    if looks_like_generated_status(usr["last_name"]):
+        fixes["last_name"] = ORIGINAL_LAST_NAME
+    if looks_like_generated_status(usr["default_bio"]):
+        fixes["default_bio"] = DEFAULT_BIO
+    if fixes:
+        database.save_user(telegram_id=usr["telegram_id"], **fixes)
+        return database.get_user(usr["telegram_id"])
+    return usr
 
 # Seed initial user into database to support transition seamlessly
 default_telegram_id = "default_user"
@@ -53,9 +76,9 @@ if not database.get_user(default_telegram_id):
         telegram_id=default_telegram_id,
         phone=os.getenv('TELEGRAM_PHONE', '+995577222769'),
         session_string=session_str or None,
-        first_name=os.getenv('ORIGINAL_FIRST_NAME', 'Nino'),
-        last_name=os.getenv('ORIGINAL_LAST_NAME', 'Keshelava'),
-        default_bio=os.getenv('DEFAULT_BIO', "Your default telegram bio goes here."),
+        first_name=ORIGINAL_FIRST_NAME,
+        last_name=ORIGINAL_LAST_NAME,
+        default_bio=DEFAULT_BIO,
         is_syncing=1 if session_str else 0,
         tier="premium"
     )
@@ -169,6 +192,7 @@ async def handle_client(reader, writer):
                     default_bio="Spotify-Telegram Sync Status"
                 )
                 usr = database.get_user(user_id)
+            usr = normalize_profile_config(usr)
             
             track = users_playback_state.get(user_id, {
                 "playing": False, "title": "", "artist": "", "progress_ms": 0, "duration_ms": 0, "album_art": "", "song_url": ""
@@ -439,6 +463,7 @@ def compute_profile_fields(usr, track_name, artist_name, track_id, scroll_offset
 async def sync_single_user(usr, client_cache):
     telegram_id = usr["telegram_id"]
     try:
+        usr = normalize_profile_config(usr)
         if not usr["session_string"] or not usr["spotify_refresh_token"]:
             return
 
