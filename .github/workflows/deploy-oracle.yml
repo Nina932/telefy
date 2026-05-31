@@ -1,0 +1,29 @@
+﻿name: Deploy to Oracle VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.ORACLE_SSH_KEY }}" > ~/.ssh/oracle_vm_key
+          chmod 600 ~/.ssh/oracle_vm_key
+          ssh-keyscan -H "${{ secrets.ORACLE_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Pull latest code and restart Telefy
+        run: |
+          ssh -i ~/.ssh/oracle_vm_key "${{ secrets.ORACLE_USER }}@${{ secrets.ORACLE_HOST }}" <<'REMOTE'
+          set -euo pipefail
+          cd /opt/telefy
+          git fetch origin main
+          git reset --hard origin/main
+          sudo systemctl restart telefy
+          sudo systemctl --no-pager --full status telefy
+          REMOTE
