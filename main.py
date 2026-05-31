@@ -7,7 +7,7 @@ from telethon import TelegramClient, events
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.sessions import StringSession
 from telethon.tl.types import KeyboardButtonWebView, ReplyInlineMarkup, KeyboardButtonRow
-from telethon.errors import SessionPasswordNeededError
+from telethon.errors import FloodWaitError, SessionPasswordNeededError
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
@@ -62,6 +62,7 @@ if not database.get_user(default_telegram_id):
     add_log("Seeded default user into sqlite DB.")
 
 users_playback_state = {}
+MIN_PROFILE_UPDATE_SECONDS = int(os.getenv("MIN_PROFILE_UPDATE_SECONDS", "300"))
 
 def get_spotify_client(refresh_token):
     if not refresh_token:
@@ -458,8 +459,62 @@ async def sync_single_user(usr, client_cache):
         
         scroll_key = f"scroll_{telegram_id}"
         last_song_key = f"last_song_{telegram_id}"
+        profile_key = f"profile_{telegram_id}"
+        profile_update_key = f"profile_update_{telegram_id}"
+        flood_until_key = f"flood_until_{telegram_id}"
+        flood_log_key = f"flood_log_{telegram_id}"
         scroll_offset = client_cache.get(scroll_key, 0)
         last_song_id = client_cache.get(last_song_key, None)
+        now = asyncio.get_running_loop().time()
+
+        async def update_profile_if_allowed(first_name, last_name, about_text, emoji_status=None):
+            profile_signature = (first_name or "", last_name or "", about_text or "", emoji_status or "")
+            if client_cache.get(profile_key) == profile_signature:
+                return
+
+            flood_until = client_cache.get(flood_until_key, 0)
+            if now < flood_until:
+                return
+
+            last_update = client_cache.get(profile_update_key, 0)
+            if last_update and now - last_update < MIN_PROFILE_UPDATE_SECONDS:
+                return
+
+            try:
+                await client(UpdateProfileRequest(
+                    first_name=first_name,
+                    last_name=last_name,
+                    about=about_text
+                ))
+
+                if emoji_status == "clear":
+                    try:
+                        from telethon.tl.functions.account import UpdateEmojiStatusRequest
+                        from telethon.tl.types import EmojiStatusEmpty
+                        await client(UpdateEmojiStatusRequest(emoji_status=EmojiStatusEmpty()))
+                    except Exception:
+                        pass
+                elif emoji_status:
+                    try:
+                        from telethon.tl.functions.account import UpdateEmojiStatusRequest
+                        from telethon.tl.types import EmojiStatus
+                        await client(UpdateEmojiStatusRequest(
+                            emoji_status=EmojiStatus(document_id=int(emoji_status))
+                        ))
+                    except Exception:
+                        pass
+
+                client_cache[profile_key] = profile_signature
+                client_cache[profile_update_key] = now
+                client_cache.pop(flood_log_key, None)
+            except FloodWaitError as e:
+                wait_seconds = int(getattr(e, "seconds", 300))
+                client_cache[flood_until_key] = now + wait_seconds + 5
+                last_log = client_cache.get(flood_log_key, 0)
+                if now - last_log > 60:
+                    minutes = max(1, round(wait_seconds / 60))
+                    add_log(f"Telegram rate limit active for user {telegram_id}; profile updates paused for about {minutes} min.")
+                    client_cache[flood_log_key] = now
 
         if current_track and current_track.get('is_playing'):
             track_name = current_track['item']['name']
@@ -481,22 +536,8 @@ async def sync_single_user(usr, client_cache):
             }
 
             new_last_name, new_bio = compute_profile_fields(usr, track_name, artist_name, track_id, scroll_offset)
-            
-            await client(UpdateProfileRequest(
-                first_name=usr["first_name"],
-                last_name=new_last_name,
-                about=new_bio
-            ))
-
-            if usr["tier"] == "premium" and usr["custom_emoji_id"]:
-                try:
-                    from telethon.tl.functions.account import UpdateEmojiStatusRequest
-                    from telethon.tl.types import EmojiStatus
-                    await client(UpdateEmojiStatusRequest(
-                        emoji_status=EmojiStatus(document_id=int(usr["custom_emoji_id"]))
-                    ))
-                except Exception:
-                    pass
+            emoji_status = usr["custom_emoji_id"] if usr["tier"] == "premium" and usr["custom_emoji_id"] else None
+            await update_profile_if_allowed(usr["first_name"], new_last_name, new_bio, emoji_status)
 
             prefix_len = len("🎧 ")
             full_info = f"{track_name} - {artist_name}"
@@ -509,18 +550,8 @@ async def sync_single_user(usr, client_cache):
             users_playback_state[telegram_id] = {
                 "playing": False, "title": "", "artist": "", "progress_ms": 0, "duration_ms": 0, "album_art": "", "song_url": ""
             }
-            await client(UpdateProfileRequest(
-                first_name=usr["first_name"],
-                last_name=usr["last_name"],
-                about=usr["default_bio"]
-            ))
-            if usr["tier"] == "premium":
-                try:
-                    from telethon.tl.functions.account import UpdateEmojiStatusRequest
-                    from telethon.tl.types import EmojiStatusEmpty
-                    await client(UpdateEmojiStatusRequest(emoji_status=EmojiStatusEmpty()))
-                except Exception:
-                    pass
+            emoji_status = "clear" if usr["tier"] == "premium" else None
+            await update_profile_if_allowed(usr["first_name"], usr["last_name"], usr["default_bio"], emoji_status)
     except Exception as e:
         add_log(f"Error syncing user {telegram_id}: {e}")
 

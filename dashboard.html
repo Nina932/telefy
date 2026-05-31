@@ -12,17 +12,17 @@
     <style>
         :root {
             --bg-color: #0b0e14;
-            --card-bg: rgba(22, 28, 38, 0.6);
-            --card-border: rgba(255, 255, 255, 0.08);
+            --card-bg: rgba(18, 25, 35, 0.72);
+            --card-border: rgba(255, 255, 255, 0.1);
             --spotify-green: #1db954;
             --spotify-glow: rgba(29, 185, 84, 0.3);
-            --telegram-blue: #0088cc;
+            --telegram-blue: #16a7e8;
             --telegram-glow: rgba(0, 136, 204, 0.3);
             --text-primary: #ffffff;
-            --text-secondary: #8a99ad;
+            --text-secondary: #9aa8bb;
             --premium-color: #ffb020;
-            --accent-glow: radial-gradient(circle at top right, rgba(0, 136, 204, 0.15), transparent 60%),
-                           radial-gradient(circle at bottom left, rgba(29, 185, 84, 0.1), transparent 60%);
+            --accent-glow: linear-gradient(135deg, rgba(22, 167, 232, 0.13), transparent 34%),
+                           linear-gradient(315deg, rgba(29, 185, 84, 0.12), transparent 42%);
         }
 
         * {
@@ -42,6 +42,30 @@
             align-items: center;
             overflow-x: hidden;
             padding: 16px;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.32;
+            background:
+                linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+            background-size: 34px 34px;
+            mask-image: linear-gradient(to bottom, black, transparent 78%);
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: auto 0 0;
+            height: 36vh;
+            pointer-events: none;
+            background: linear-gradient(180deg, transparent, rgba(29, 185, 84, 0.08) 45%, rgba(22, 167, 232, 0.1));
+            opacity: 0.7;
         }
 
         .container {
@@ -55,6 +79,8 @@
             opacity: 0;
             transform: translateY(15px);
             animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            position: relative;
+            z-index: 1;
         }
 
         @keyframes fadeInUp {
@@ -143,10 +169,24 @@
             padding: 24px;
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            box-shadow: 0 14px 42px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.04);
             position: relative;
             overflow: hidden;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(135deg, rgba(255,255,255,0.06), transparent 26%);
+            opacity: 0.55;
+        }
+
+        .card > * {
+            position: relative;
+            z-index: 1;
         }
 
         .card:hover {
@@ -360,6 +400,7 @@
             background: linear-gradient(90deg, var(--spotify-green), #5ee88c);
             border-radius: 10px;
             transition: width 0.5s linear;
+            box-shadow: 0 0 14px rgba(29, 185, 84, 0.45);
         }
 
         .progress-time {
@@ -565,7 +606,10 @@
         }
 
         .connection-card {
-            background: linear-gradient(135deg, rgba(22, 28, 38, 0.8) 0%, rgba(12, 17, 24, 0.8) 100%);
+            background:
+                linear-gradient(135deg, rgba(22, 167, 232, 0.12), transparent 45%),
+                linear-gradient(315deg, rgba(29, 185, 84, 0.1), transparent 52%),
+                rgba(14, 21, 31, 0.86);
             margin-bottom: 24px;
             border-color: rgba(0, 136, 204, 0.2);
         }
@@ -600,6 +644,30 @@
             background: rgba(255, 255, 255, 0.025);
             border: 1px solid var(--card-border);
             border-radius: 8px;
+            box-shadow: inset 3px 0 0 rgba(154, 168, 187, 0.18);
+            transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .connection-panel:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255,255,255,0.16);
+        }
+
+        .connection-panel.spotify-panel {
+            box-shadow: inset 3px 0 0 rgba(29, 185, 84, 0.55);
+        }
+
+        .connection-panel.telegram-panel {
+            box-shadow: inset 3px 0 0 rgba(22, 167, 232, 0.55);
+        }
+
+        .connection-panel.connected {
+            background: rgba(255,255,255,0.045);
+            border-color: rgba(29, 185, 84, 0.32);
+        }
+
+        .connection-panel.telegram-panel.connected {
+            border-color: rgba(22, 167, 232, 0.34);
         }
 
         .connection-heading {
@@ -925,6 +993,8 @@
             border-top: 1px solid var(--card-border);
             width: 100%;
             max-width: 1100px;
+            position: relative;
+            z-index: 1;
         }
 
         .toast {
@@ -992,7 +1062,7 @@
             
             <div class="connection-grid">
                 <!-- Spotify Connection Column -->
-                <div class="connection-panel">
+                <div class="connection-panel spotify-panel" id="spotifyPanel">
                     <div class="connection-heading">
                         <i class="fab fa-spotify connection-icon spotify"></i>
                         <div>
@@ -1009,7 +1079,7 @@
                 </div>
                 
                 <!-- Telegram Connection Column -->
-                <div class="connection-panel">
+                <div class="connection-panel telegram-panel" id="telegramPanel">
                     <div class="connection-heading">
                         <i class="fas fa-paper-plane connection-icon telegram"></i>
                         <div>
@@ -1295,6 +1365,10 @@
                 const spStatus = document.getElementById("spotifyStatusText");
                 const spConnectBtn = document.getElementById("spotifyConnectBtn");
                 const spDisconnectBtn = document.getElementById("spotifyDisconnectBtn");
+                const spotifyPanel = document.getElementById("spotifyPanel");
+                const telegramPanel = document.getElementById("telegramPanel");
+                spotifyPanel.classList.toggle("connected", spotifyConnected);
+                telegramPanel.classList.toggle("connected", telegramConnected);
 
                 if (spotifyConnected) {
                     spStatus.innerText = "Connected & Active 🎧";
