@@ -6,21 +6,21 @@
     <title>Spotify ⇄ Telegram Sync Dashboard</title>
     
     <!-- Premium Typography and Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
     <style>
         :root {
-            --bg-color: #020304;
+            --bg-color: var(--tg-theme-bg-color, #020304);
             --card-bg: transparent;
             --card-border: rgba(255, 255, 255, 0.18);
             --spotify-green: #1db954;
             --spotify-glow: rgba(29, 185, 84, 0.34);
             --telegram-blue: #ffffff;
             --telegram-glow: rgba(255, 255, 255, 0.18);
-            --text-primary: #ffffff;
-            --text-secondary: #8f98a3;
+            --text-primary: var(--tg-theme-text-color, #ffffff);
+            --text-secondary: var(--tg-theme-hint-color, #8f98a3);
             --premium-color: #f2c94c;
             --accent-glow: none;
         }
@@ -137,8 +137,8 @@
         }
 
         .logo-text h1 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 22px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 17px;
             font-weight: 800;
             letter-spacing: 0;
             background: linear-gradient(135deg, #fff 30%, var(--text-secondary) 100%);
@@ -147,7 +147,8 @@
         }
 
         .logo-text p {
-            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
             color: var(--text-secondary);
             font-weight: 500;
         }
@@ -156,6 +157,35 @@
             display: grid;
             grid-template-columns: minmax(0, 1fr);
             gap: 12px;
+        }
+
+        .telemetry-strip {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0;
+            border: 0.5px solid var(--card-border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .telemetry-cell {
+            min-width: 0;
+            padding: 8px;
+            border-right: 0.5px solid var(--card-border);
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .telemetry-cell:last-child {
+            border-right: 0;
+        }
+
+        .telemetry-cell strong {
+            color: var(--text-primary);
+            font-weight: 700;
         }
 
         @media (max-width: 900px) {
@@ -209,7 +239,7 @@
         }
 
         .card-title {
-            font-family: 'Inter', sans-serif;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 11px;
             font-weight: 800;
             text-transform: uppercase;
@@ -225,6 +255,7 @@
         }
 
         .sync-badge {
+            font-family: 'JetBrains Mono', monospace;
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -340,7 +371,7 @@
         }
 
         .track-title {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 18px;
             font-weight: 700;
             color: var(--text-primary);
@@ -733,7 +764,7 @@
         }
 
         .health-value {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 13px;
             font-weight: 700;
             white-space: nowrap;
@@ -1059,6 +1090,18 @@
                 gap: 10px;
             }
 
+            .telemetry-strip {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .telemetry-cell:nth-child(2) {
+                border-right: 0;
+            }
+
+            .telemetry-cell:nth-child(-n+2) {
+                border-bottom: 0.5px solid var(--card-border);
+            }
+
             .now-playing-card {
                 padding: 12px;
             }
@@ -1276,8 +1319,8 @@
                     <i class="fas fa-paper-plane"></i>
                 </div>
                 <div class="logo-text">
-                    <h1>Sync Dashboard</h1>
-                    <p>Spotify ⇄ Telegram Engine Control</p>
+                    <h1>TELEFY OS // V2.0</h1>
+                    <p>SPOTIFY -> TELEGRAM</p>
                 </div>
             </div>
             <div id="syncStatusBadge" class="sync-badge active">
@@ -1285,6 +1328,13 @@
                 <span id="syncStatusText">Engine Active</span>
             </div>
         </header>
+
+        <div class="telemetry-strip">
+            <div class="telemetry-cell">STATUS <strong id="telemetryStatus">CHECKING</strong></div>
+            <div class="telemetry-cell">SYNC <strong id="telemetrySync">--</strong></div>
+            <div class="telemetry-cell">LOAD <strong id="telemetryLoad">0%</strong></div>
+            <div class="telemetry-cell">TRACK <strong id="telemetryTrack">IDLE</strong></div>
+        </div>
 
         <!-- Account Connection Center Card -->
         <div class="card connection-card" id="connectionCenterCard">
@@ -1484,6 +1534,7 @@
         const telegramApp = window.Telegram?.WebApp;
         telegramApp?.ready();
         telegramApp?.expand();
+        setupTelegramNativeChrome();
 
         const telegramUserId = telegramApp?.initDataUnsafe?.user?.id
             ? String(telegramApp.initDataUnsafe.user.id)
@@ -1502,6 +1553,38 @@
         let isSyncing = true;
         let activeSongUrl = "";
         let userTier = "free";
+
+        function setupTelegramNativeChrome() {
+            if (!telegramApp) return;
+            try {
+                telegramApp.setHeaderColor("#020304");
+                telegramApp.setBackgroundColor("#020304");
+                telegramApp.MainButton.setText("BOT CONTROLS");
+                telegramApp.MainButton.color = "#ffffff";
+                telegramApp.MainButton.textColor = "#020304";
+                telegramApp.MainButton.onClick(openTelegramBot);
+                telegramApp.MainButton.show();
+                telegramApp.BackButton.hide();
+            } catch (err) {
+                console.debug("Telegram native chrome unavailable", err);
+            }
+        }
+
+        function haptic(type = "light") {
+            try {
+                telegramApp?.HapticFeedback?.impactOccurred(type);
+            } catch (err) {
+                // Haptics are optional outside Telegram.
+            }
+        }
+
+        function hapticNotify(type = "success") {
+            try {
+                telegramApp?.HapticFeedback?.notificationOccurred(type);
+            } catch (err) {
+                // Haptics are optional outside Telegram.
+            }
+        }
 
         window.addEventListener("DOMContentLoaded", () => {
             if (urlParams.get('spotify_success') === 'true') {
@@ -1533,9 +1616,11 @@
             if (isSuccess) {
                 toast.className = "toast success show";
                 toastIcon.className = "fas fa-check-circle";
+                hapticNotify("success");
             } else {
                 toast.className = "toast error show";
                 toastIcon.className = "fas fa-exclamation-circle";
+                hapticNotify("error");
             }
 
             setTimeout(() => {
@@ -1741,8 +1826,13 @@
             const rateLimitHealth = document.getElementById("rateLimitHealth");
             const healthUpdated = document.getElementById("healthUpdated");
             const engineSummary = document.getElementById("engineSummary");
+            const telemetryStatus = document.getElementById("telemetryStatus");
+            const telemetrySync = document.getElementById("telemetrySync");
+            const telemetryLoad = document.getElementById("telemetryLoad");
+            const telemetryTrack = document.getElementById("telemetryTrack");
             const track = data.current_track || {};
             const connectedCount = [data.spotify_connected, data.telegram_connected].filter(Boolean).length;
+            const load = data.is_syncing && track.playing ? 37 : data.is_syncing ? 12 : 0;
 
             connectionHealth.innerText = connectedCount === 2 ? "Ready" : `${connectedCount}/2 connected`;
             connectionHealth.className = connectedCount === 2 ? "health-value good" : "health-value warn";
@@ -1768,11 +1858,17 @@
             rateLimitHealth.className = "health-value good";
             if (!data.is_syncing) {
                 engineSummary.innerText = "[ ENGINE: PAUSED ]";
+                telemetryStatus.innerText = "PAUSED";
             } else if (connectedCount === 2) {
                 engineSummary.innerText = "[ ENGINE: OPTIMAL ]";
+                telemetryStatus.innerText = "OPTIMAL";
             } else {
                 engineSummary.innerText = "[ ENGINE: SETUP REQUIRED ]";
+                telemetryStatus.innerText = "SETUP";
             }
+            telemetrySync.innerText = connectedCount === 2 ? "LINKED" : `${connectedCount}/2`;
+            telemetryLoad.innerText = `${load}%`;
+            telemetryTrack.innerText = track.playing ? "ACTIVE" : "IDLE";
             healthUpdated.innerText = `Updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
         }
 
@@ -1844,6 +1940,7 @@
         }
 
         async function toggleSync() {
+            haptic("medium");
             try {
                 const response = await fetch(`${API_BASE}/api/toggle?user_id=${user_id}`, { method: "POST" });
                 if (!response.ok) throw new Error("Toggle engine request failed");
@@ -1859,6 +1956,7 @@
         }
 
         async function restoreProfile() {
+            haptic("medium");
             if (!confirm("Restore your idle Telegram profile and pause automatic sync?")) return;
             try {
                 const response = await fetch(`${API_BASE}/api/restore-profile?user_id=${user_id}`, { method: "POST" });
@@ -1873,6 +1971,7 @@
         }
 
         function inviteFriend() {
+            haptic("light");
             const shareUrl = `${window.location.origin}/?ref=${encodeURIComponent(user_id)}`;
             const shareText = "Use Telefy to show your Spotify status on Telegram.";
             const telegramShare = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
@@ -1884,6 +1983,7 @@
         }
 
         function openTelegramBot() {
+            haptic("light");
             const botUrl = "https://t.me/Telefy1_bot";
             if (telegramApp?.openTelegramLink) {
                 telegramApp.openTelegramLink(botUrl);
@@ -1937,6 +2037,7 @@
         }
 
         async function connectSpotify() {
+            haptic("medium");
             try {
                 const response = await fetch(`${API_BASE}/api/spotify/auth-url?user_id=${user_id}`);
                 if (!response.ok) throw new Error("Failed to request spotify authorization URL");
@@ -1952,6 +2053,7 @@
         }
 
         async function disconnectSpotify() {
+            haptic("medium");
             if (!confirm("Are you sure you want to disconnect Spotify?")) return;
             try {
                 const response = await fetch(`${API_BASE}/api/spotify/disconnect?user_id=${user_id}`, { method: "POST" });
@@ -1968,6 +2070,7 @@
         }
 
         async function sendTelegramCode() {
+            haptic("light");
             const phoneInput = document.getElementById("tgPhoneInput");
             const phone = phoneInput.value.trim();
             if (!phone) {
@@ -2002,6 +2105,7 @@
         }
 
         async function verifyTelegramCode() {
+            haptic("medium");
             const codeInput = document.getElementById("tgCodeInput");
             const code = codeInput.value.trim();
             if (!code) {
@@ -2086,6 +2190,7 @@
         }
 
         async function disconnectTelegram() {
+            haptic("medium");
             if (!confirm("Are you sure you want to disconnect Telegram? All status updates will stop.")) return;
             try {
                 const response = await fetch(`${API_BASE}/api/telegram/disconnect?user_id=${user_id}`, { method: "POST" });
